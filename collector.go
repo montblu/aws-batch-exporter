@@ -14,14 +14,14 @@ import (
 )
 
 type Collector struct {
-	client batchiface.BatchAPI
-	region string
+	client  batchiface.BatchAPI
+	region  string
 	timeout time.Duration
 }
 
 const (
 	namespace = "aws_batch"
-	timeout = 10 * time.Second
+	timeout   = 10 * time.Second
 )
 
 var (
@@ -69,7 +69,7 @@ var (
 		prometheus.BuildFQName(namespace, "", "failed_job"),
 		"Job in the queue that are in the FAILED state",
 		[]string{"region", "id", "queue", "name"}, nil,
-		)
+	)
 
 	jobSucceeded = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "succeeded_job"),
@@ -79,20 +79,19 @@ var (
 
 	jobDescMap = map[string]*prometheus.Desc{
 		batch.JobStatusSubmitted: jobSubmitted,
-		batch.JobStatusPending: jobPending,
-		batch.JobStatusRunnable: jobRunnable,
-		batch.JobStatusStarting: jobStarting,
-		batch.JobStatusRunning: jobRunning,
-		batch.JobStatusFailed: jobFailed,
+		batch.JobStatusPending:   jobPending,
+		batch.JobStatusRunnable:  jobRunnable,
+		batch.JobStatusStarting:  jobStarting,
+		batch.JobStatusRunning:   jobRunning,
+		batch.JobStatusFailed:    jobFailed,
 		batch.JobStatusSucceeded: jobSucceeded,
 	}
-
 )
 
 type JobResult struct {
-	id string
-	queue string
-	name string
+	id     string
+	queue  string
+	name   string
 	status string
 }
 
@@ -103,8 +102,8 @@ func New(region string) (*Collector, error) {
 	}
 
 	return &Collector{
-		client: batch.New(s),
-		region: "ap-northeast-1",
+		client:  batch.New(s),
+		region:  "ap-northeast-1",
 		timeout: timeout,
 	}, nil
 }
@@ -134,7 +133,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			defer wg.Done()
 			var results []JobResult
 			for _, s := range jobStatus {
-				r, err := c.client.ListJobsWithContext(ctx, &batch.ListJobsInput{JobQueue: d.JobQueueName,JobStatus: &s})
+				r, err := c.client.ListJobsWithContext(ctx, &batch.ListJobsInput{JobQueue: d.JobQueueName, JobStatus: &s})
 				if err != nil {
 					log.Printf("Error collecting job status metrics: %v\n", err)
 					continue
