@@ -103,7 +103,7 @@ func New(region string) (*Collector, error) {
 
 	return &Collector{
 		client:  batch.New(s),
-		region:  "ap-northeast-1",
+		region:  region,
 		timeout: timeout,
 	}, nil
 }
