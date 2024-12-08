@@ -1,4 +1,4 @@
-module github.com/atr0phy/aws_batch_exporter
+module github.com/montblu/aws-batch-exporter
 
 go 1.14
 
