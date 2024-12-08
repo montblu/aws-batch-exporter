@@ -6,14 +6,14 @@ AWS Batch metrics exporter.
 ```bash
 go build -o aws_batch_exporter cmd/aws_batch_exporter.go
 # required
-export REGION= #your region
+export AWS_REGION= #your region
 ./aws_batch_exporter
 ```
 
 #### docker
 ```bash
 docker build . -t aws_batch_exporter
-docker run -d -p 8080:8080 -e REGION=<your region> aws_batch_exporter
+docker run -d -p 8080:8080 -e AWS_REGION=<your region> aws_batch_exporter
 ```
 
 ### Requirements

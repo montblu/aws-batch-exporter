@@ -19,7 +19,7 @@ func getenv(key, fallback string) string {
 
 func Run() {
 	addr := getenv("SERVER_ADDR", ":8080")
-	region := os.Getenv("REGION")
+	region := os.Getenv("AWS_REGION")
 	if len(region) == 0 {
 		log.Fatalln("region is required value. exit an application.")
 	}
