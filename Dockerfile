@@ -1,11 +1,20 @@
 FROM golang:1.23.4-alpine AS builder
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT=""
+
+ENV GO111MODULE=on \
+    CGO_ENABLED=0 \
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH} \
+    GOARM=${TARGETVARIANT}
 
 RUN apk add --no-cache ca-certificates tini-static \
     && update-ca-certificates
 
 WORKDIR /build
 COPY . .
-RUN GOOS=linux GOARCH=amd64 go build -o aws_batch_exporter /build/cmd/aws_batch_exporter.go
+RUN go build -o aws_batch_exporter /build/cmd/aws_batch_exporter.go
 
 FROM gcr.io/distroless/static:nonroot
 USER nonroot:nonroot
