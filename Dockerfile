@@ -1,4 +1,4 @@
-FROM golang:alpine AS build-env
+FROM golang:1.23.4-alpine as builder
 COPY ./ /opt/workdir/
 WORKDIR /opt/workdir/
 RUN GOOS=linux GOARCH=amd64 go build -o aws_batch_exporter cmd/aws_batch_exporter.go
