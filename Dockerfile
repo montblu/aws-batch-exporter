@@ -22,3 +22,6 @@ COPY --from=builder --chown=nonroot:nonroot /etc/ssl/certs/ca-certificates.crt /
 COPY --from=builder --chown=nonroot:nonroot /sbin/tini-static /tini
 COPY --from=builder --chown=nonroot:nonroot /build/aws_batch_exporter /aws_batch_exporter
 ENTRYPOINT [ "/tini", "--", "/aws_batch_exporter" ]
+LABEL \
+    org.opencontainers.image.title="aws-batch-exporter" \
+    org.opencontainers.image.source="https://github.com/montblu/aws-batch-exporter"
