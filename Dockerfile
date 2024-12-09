@@ -17,11 +17,17 @@ COPY . .
 RUN go build -o aws_batch_exporter /build/cmd/aws_batch_exporter.go
 
 FROM gcr.io/distroless/static:nonroot
+
+ENV PORT=8080
+
 USER nonroot:nonroot
+
 COPY --from=builder --chown=nonroot:nonroot /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder --chown=nonroot:nonroot /sbin/tini-static /tini
 COPY --from=builder --chown=nonroot:nonroot /build/aws_batch_exporter /aws_batch_exporter
+
 ENTRYPOINT [ "/tini", "--", "/aws_batch_exporter" ]
+EXPOSE ${PORT}
 LABEL \
     org.opencontainers.image.title="aws-batch-exporter" \
     org.opencontainers.image.source="https://github.com/montblu/aws-batch-exporter"
