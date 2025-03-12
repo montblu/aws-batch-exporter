@@ -38,43 +38,43 @@ var (
 	jobSubmitted = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "submitted_job"),
 		"Job in the queue that are in the SUBMITTED state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobPending = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "pending_job"),
 		"Job in the queue that are in the PENDING state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobRunnable = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "runnable_job"),
 		"Job in the queue that are in the RUNNABLE state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobStarting = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "starting_job"),
 		"Job in the queue that are in the STARTING state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobRunning = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "running_job"),
 		"Job in the queue that are in the RUNNING state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobFailed = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "failed_job"),
 		"Job in the queue that are in the FAILED state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobSucceeded = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "succeeded_job"),
 		"Job in the queue that are in the SUCCEEDED state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobDescMap = map[string]*prometheus.Desc{
@@ -89,10 +89,11 @@ var (
 )
 
 type JobResult struct {
-	id     string
-	queue  string
-	name   string
-	status string
+	id         string
+	queue      string
+	name       string
+	status     string
+	definition string
 }
 
 func New(region string) (*Collector, error) {
@@ -139,7 +140,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 				for _, j := range r.JobSummaryList {
-					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status})
+					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status, definition: *j.JobDefinition})
 				}
 			}
 			c.collectJobDetailStatus(ch, results)
@@ -150,6 +151,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 func (c *Collector) collectJobDetailStatus(ch chan<- prometheus.Metric, results []JobResult) {
 	for _, r := range results {
-		ch <- prometheus.MustNewConstMetric(jobDescMap[r.status], prometheus.GaugeValue, 1, c.region, r.id, r.queue, r.name)
+		ch <- prometheus.MustNewConstMetric(jobDescMap[r.status], prometheus.GaugeValue, 1, c.region, r.id, r.queue, r.name, r.definition)
 	}
 }
