@@ -140,7 +140,11 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 				for _, j := range r.JobSummaryList {
-					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status, definition: *j.JobDefinition})
+					definition := ""
+					if j.JobDefinition != nil {
+						definition = *j.JobDefinition
+					}
+					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status, definition: definition})
 				}
 			}
 			c.collectJobDetailStatus(ch, results)
