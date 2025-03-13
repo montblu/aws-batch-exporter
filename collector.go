@@ -5,8 +5,6 @@ import (
 	"log"
 	"sync"
 	"time"
-	"encoding/json"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -173,13 +171,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
                         log.Printf("Error fetching job details for JobId %s: %v\n", *j.JobId, err)
                         continue
                     }
-
-					data, err := json.Marshal(describeRes)
-					if err != nil {
-						log.Printf("Error marshaling describeRes: %v", err)
-					} else {
-						log.Printf("Describe Response: %s", string(data))
-					}
 
 					// Get JobDefinition from detailed result
 					definition := "undefined"
