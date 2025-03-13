@@ -119,6 +119,29 @@ func (*Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- jobSucceeded
 }
 
+// Function to extract the JobDefinition name
+func getJobDefinitionSubstring(jobDefinitionArn string) string {
+	// Look for the substring after "job-definition/"
+	startIndex := strings.Index(jobDefinitionArn, "job-definition/")
+	if startIndex == -1 {
+		log.Printf("Invalid ARN: %s, 'job-definition/' not found", jobDefinitionArn)
+		return ""
+	}
+
+	// Move the index to the end of "job-definition/"
+	startIndex += len("job-definition/")
+
+	// Find the colon (:) indicating the start of the revision number
+	endIndex := strings.Index(jobDefinitionArn[startIndex:], ":")
+	if endIndex == -1 {
+		log.Printf("Invalid ARN: %s, revision number not found", jobDefinitionArn)
+		return ""
+	}
+
+	// Substring from startIndex to endIndex
+	return jobDefinitionArn[startIndex : startIndex+endIndex]
+}
+
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -140,9 +163,20 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 				for _, j := range r.JobSummaryList {
-					definition := ""
-					if j.JobDefinition != nil {
-						definition = *j.JobDefinition
+					// Use DescribeJobs for each JobId to get detailed info, including the JobDefinition
+                    describeRes, err := c.client.DescribeJobsWithContext(ctx, &batch.DescribeJobsInput{
+                        Jobs: []*string{j.JobId},
+                    })
+                    if err != nil {
+                        log.Printf("Error fetching job details for JobId %s: %v\n", *j.JobId, err)
+                        continue
+                    }
+
+					// Get JobDefinition from detailed result
+					definition := "undefined"
+					if len(describeRes.Jobs) > 0 && describeRes.Jobs[0].JobDefinition != nil {
+						// Get simplified definition out of the ARN
+						definition = getJobDefinitionSubstring(*describeRes.Jobs[0].JobDefinition)
 					}
 					log.Printf("Job: ID=%s, Queue=%s, Name=%s, Status=%s, Definition=%s", *j.JobId, *d.JobQueueName, *j.JobName, *j.Status, definition)
 
