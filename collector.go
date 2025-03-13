@@ -38,43 +38,43 @@ var (
 	jobSubmitted = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "submitted_job"),
 		"Job in the queue that are in the SUBMITTED state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobPending = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "pending_job"),
 		"Job in the queue that are in the PENDING state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobRunnable = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "runnable_job"),
 		"Job in the queue that are in the RUNNABLE state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobStarting = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "starting_job"),
 		"Job in the queue that are in the STARTING state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobRunning = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "running_job"),
 		"Job in the queue that are in the RUNNING state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobFailed = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "failed_job"),
 		"Job in the queue that are in the FAILED state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobSucceeded = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "succeeded_job"),
 		"Job in the queue that are in the SUCCEEDED state",
-		[]string{"region", "id", "queue", "name"}, nil,
+		[]string{"region", "id", "queue", "name", "definition"}, nil,
 	)
 
 	jobDescMap = map[string]*prometheus.Desc{
@@ -89,10 +89,11 @@ var (
 )
 
 type JobResult struct {
-	id     string
-	queue  string
-	name   string
-	status string
+	id         string
+	queue      string
+	name       string
+	status     string
+	definition string
 }
 
 func New(region string) (*Collector, error) {
@@ -118,6 +119,29 @@ func (*Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- jobSucceeded
 }
 
+// Function to extract the JobDefinition name
+func getJobDefinitionSubstring(jobDefinitionArn string) string {
+	// Look for the substring after "job-definition/"
+	startIndex := strings.Index(jobDefinitionArn, "job-definition/")
+	if startIndex == -1 {
+		log.Printf("Invalid ARN: %s, 'job-definition/' not found", jobDefinitionArn)
+		return ""
+	}
+
+	// Move the index to the end of "job-definition/"
+	startIndex += len("job-definition/")
+
+	// Find the colon (:) indicating the start of the revision number
+	endIndex := strings.Index(jobDefinitionArn[startIndex:], ":")
+	if endIndex == -1 {
+		log.Printf("Invalid ARN: %s, revision number not found", jobDefinitionArn)
+		return ""
+	}
+
+	// Substring from startIndex to endIndex
+	return jobDefinitionArn[startIndex : startIndex+endIndex]
+}
+
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -139,7 +163,23 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					continue
 				}
 				for _, j := range r.JobSummaryList {
-					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status})
+					// Use DescribeJobs for each JobId to get detailed info, including the JobDefinition
+                    describeRes, err := c.client.DescribeJobsWithContext(ctx, &batch.DescribeJobsInput{
+                        Jobs: []*string{j.JobId},
+                    })
+                    if err != nil {
+                        log.Printf("Error fetching job details for JobId %s: %v\n", *j.JobId, err)
+                        continue
+                    }
+
+					// Get JobDefinition from detailed result
+					definition := "undefined"
+					if len(describeRes.Jobs) > 0 && describeRes.Jobs[0].JobDefinition != nil {
+						// Get simplified definition out of the ARN
+						definition = getJobDefinitionSubstring(*describeRes.Jobs[0].JobDefinition)
+					}
+
+					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status, definition: definition})
 				}
 			}
 			c.collectJobDetailStatus(ch, results)
@@ -150,6 +190,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 func (c *Collector) collectJobDetailStatus(ch chan<- prometheus.Metric, results []JobResult) {
 	for _, r := range results {
-		ch <- prometheus.MustNewConstMetric(jobDescMap[r.status], prometheus.GaugeValue, 1, c.region, r.id, r.queue, r.name)
+		ch <- prometheus.MustNewConstMetric(jobDescMap[r.status], prometheus.GaugeValue, 1, c.region, r.id, r.queue, r.name, r.definition)
 	}
 }
