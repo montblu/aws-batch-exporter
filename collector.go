@@ -144,6 +144,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					if j.JobDefinition != nil {
 						definition = *j.JobDefinition
 					}
+					log.Printf("Job: ID=%s, Queue=%s, Name=%s, Status=%s, Definition=%s", *j.JobId, *d.JobQueueName, *j.JobName, *j.Status, definition)
+
 					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status, definition: definition})
 				}
 			}
