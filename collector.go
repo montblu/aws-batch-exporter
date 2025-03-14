@@ -23,7 +23,7 @@ type Collector struct {
 const (
 	namespace       = "aws_batch"
 	timeout         = 10 * time.Second
-	maxDescribeSize = 100
+	maxDescribeSize = 100 //https://docs.aws.amazon.com/cli/latest/reference/batch/describe-jobs.html#options
 )
 
 var (
