@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
