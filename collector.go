@@ -174,7 +174,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 				// We need to process this in chunks because of AWS hard limit on DescribeJobsWithContext
 				for i := 0; i < len(jobIDs); i += maxDescribeSize {
 					// Making sure it does not exceed length
-					end := min(i + maxDescribeSize, len(jobsIDs))
+					end := min(i + maxDescribeSize, len(jobIDs))
 
 					batchJobIDs := jobIDs[i:end] // We slice in a chunk to process it individually
 
