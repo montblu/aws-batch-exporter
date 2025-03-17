@@ -21,8 +21,9 @@ type Collector struct {
 }
 
 const (
-	namespace = "aws_batch"
-	timeout   = 10 * time.Second
+	namespace       = "aws_batch"
+	timeout         = 10 * time.Second
+	maxDescribeSize = 100 //https://docs.aws.amazon.com/cli/latest/reference/batch/describe-jobs.html#options
 )
 
 var (
@@ -163,24 +164,34 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 					log.Printf("Error collecting job status metrics: %v\n", err)
 					continue
 				}
-				for _, j := range r.JobSummaryList {
-					// Use DescribeJobs for each JobId to get detailed info, including the JobDefinition
-                    describeRes, err := c.client.DescribeJobsWithContext(ctx, &batch.DescribeJobsInput{
-                        Jobs: []*string{j.JobId},
-                    })
-                    if err != nil {
-                        log.Printf("Error fetching job details for JobId %s: %v\n", *j.JobId, err)
-                        continue
-                    }
 
-					// Get JobDefinition from detailed result
-					definition := "undefined"
-					if len(describeRes.Jobs) > 0 && describeRes.Jobs[0].JobDefinition != nil {
-						// Get simplified definition out of the ARN
-						definition = getJobDefinitionSubstring(*describeRes.Jobs[0].JobDefinition)
+				// Collect Job IDs for job description
+				var jobIDs []*string
+				for _, job := range r.JobSummaryList {
+					jobIDs = append(jobIDs, job.JobId)
+				}
+
+				// We need to process this in chunks because of AWS hard limit on DescribeJobsWithContext
+				for i := 0; i < len(jobIDs); i += maxDescribeSize {
+					// Making sure it does not exceed length
+					end := min(i + maxDescribeSize, len(jobsIDs))
+
+					batchJobIDs := jobIDs[i:end] // We slice in a chunk to process it individually
+
+					describeRes, err := c.client.DescribeJobsWithContext(ctx, &batch.DescribeJobsInput{Jobs: batchJobIDs})
+					if err != nil {
+						log.Printf("Error fetching job details: %v\n", err)
+						continue
 					}
 
-					results = append(results, JobResult{id: *j.JobId, queue: *d.JobQueueName, name: *j.JobName, status: *j.Status, definition: definition})
+					// Process results
+					for _, j := range describeRes.Jobs {
+						results = append(results, JobResult{
+							id: *j.JobId, queue: *d.JobQueueName,
+							name: *j.JobName, status: *j.Status,
+							definition: getJobDefinitionSubstring(*j.JobDefinition),
+						})
+					}
 				}
 			}
 			c.collectJobDetailStatus(ch, results)
